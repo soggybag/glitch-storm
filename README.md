@@ -1,5 +1,11 @@
 # glitch-storm
 
+
+
+
+
+---
+
 5 March 2020: Two new modes added:
 
 -While left button is pressed, you can change the speed of the main timer up to x15 faster tweaking POT 1
