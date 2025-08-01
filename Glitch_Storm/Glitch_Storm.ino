@@ -25,10 +25,10 @@
 int debounceRange = 20;
 
 long t = 0;
-volatile int a, b, c;
+volatile uint8_t a = 0, b = 0, c = 0;
 volatile int value;
 
-byte programNumber = 1;
+byte programNumber = 0;
 byte upButtonState = 0;
 byte downButtonState = 0;
 byte lastButtonState = 0;
@@ -230,12 +230,10 @@ void potsManager() {
 
   // a = map(analogRead(0), 0, 1023, aBottom, aTop);
 
-  /*uint8_t*/ a = scaleParam(analogA, equations[programNumber].aMin, equations[programNumber].aMax);
-  /*uint8_t*/ b = scaleParam(analogB, equations[programNumber].bMin, equations[programNumber].bMax);
-  /*uint8_t*/ c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
+  a = scaleParam(analogA, equations[programNumber].aMin, equations[programNumber].aMax);
+  b = scaleParam(analogB, equations[programNumber].bMin, equations[programNumber].bMax);
+  c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
 
-  // Serial.println(analogRead(3));
-  c = (cBottom + cTop) >> 1;
   SAMPLE_RATE = map(analogRead(3), 0, 1023, 256, 32768);
 
   // this only if sample rate is different.
@@ -304,10 +302,6 @@ void printValues() {
   Serial.print(b);
   Serial.print("  c: ");
   Serial.println(c);
-
-  Serial.print("A0: "); Serial.print(analogRead(A0));
-  Serial.print("  A1: "); Serial.print(analogRead(A1));
-  Serial.print("  A2: "); Serial.println(analogRead(A2));
 }
 
 int  softDebounce(int  readCV, int  oldRead) {

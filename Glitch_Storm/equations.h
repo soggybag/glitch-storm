@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <avr/interrupt.h>
 
-
 typedef uint8_t (*BytebeatFunc)(uint32_t, uint8_t, uint8_t, uint8_t);
 
 struct EquationMeta {
@@ -17,6 +16,15 @@ struct EquationMeta {
 // The parameters `a`, `b`, and `c` can be adjusted to change the sound output
 
 // These are pointer functions that can be used to call the equations
+
+// Add a new equation by writing a new function using the form: 
+/*
+uint8_t equation_1(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
+  return <Your equation here: t >> a << t % b * t * c; >;
+}
+*/
+// Your equation must return an 8bit value uint8_t
+// Add your equation to the array below
 
 uint8_t equation_1(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
   return ((t & ((t >> a))) + (t | ((t >> b)))) & (t >> (c + 1)) | (t >> a) & (t * (t >> b));
@@ -83,6 +91,12 @@ uint8_t equation_15(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
 uint8_t equation_16(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
   return ((t & (4 << a)) ? ((-t * (t ^ t) | (t >> b)) >> 3) : (t >> c) | ((t & (3 << b)) ? t << 1 : t));
 }
+
+// If you create new equations follow the instructions above. 
+// Then add your new equation to the array below. 
+// If you inlcude variables in your equation define the min and max values for vars: a, b, and c
+
+// NOTE! The LEDs show a binary value up to 15, so more equations will not display properly! 
 
 EquationMeta equations[] = {
   { equation_1, 0, 10, 0, 14, 0, 14 },
