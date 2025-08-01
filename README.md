@@ -12,4 +12,4 @@ Updated schematic:
 
 Breadboard Layout:
 
-![Schematic](Glitchstorm.png)
+![Schematic](GlitchStorm.png)
