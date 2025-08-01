@@ -4,6 +4,9 @@
 // Some equations are empty. You can collaborate sending your new finding cool sounding ones to the repository
 // https://github.com/spherical-sound-society/glitch-storm
 
+// This is my take on Glitch Storm. I revised the original files and made a few small changes to suit 
+// myself in software design. 
+
 #include <stdint.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -11,7 +14,7 @@
 
 #include "equations.h"
 
-#define isDebugging   true
+#define isDebugging   false
 
 #define ledPin        13
 #define speakerPin    11
@@ -22,8 +25,6 @@
 #define progBit2Pin   9
 #define progBit3Pin   10
 
-int debounceRange = 20;
-
 long t = 0;
 volatile uint8_t a = 0, b = 0, c = 0;
 volatile int value;
@@ -31,43 +32,17 @@ volatile int value;
 byte programNumber = 0;
 byte upButtonState = 0;
 byte downButtonState = 0;
-byte lastButtonState = 0;
-byte totalPrograms = 16;
 byte clocksOut = 0;
 
-int cyclebyte = 0;
-volatile int aTop = 99;
-volatile int aBottom = 0;
-volatile int bTop = 99;
-volatile int bBottom = 0;
-volatile int cTop = 99;
-volatile int cBottom = 0;
-
-int d = 0;
-
 bool isClockOutMode = false;
-bool isSerialValues = true;
 
 static unsigned long time_now = 0;
 
-long button1Timer = 0;
-long longPress1Time = 400;
-long button2Timer = 0;
-long longPress2Time = 400;
-
-boolean isButton1Active = false;
-boolean isLongPress1Active = false;
-boolean isButton2Active = false;
-boolean isLongPress2Active = false;
-
-int  shift_A_Pot = 1;
-int  old_A_Pot = 1;
 int SAMPLE_RATE = 16384;
-int old_SAMPLE_RATE = SAMPLE_RATE;
-byte shift_C_Pot = 0;
-byte old_C_Pot = 0;
 
 
+///////////////////////////////////////////////////////////////
+// SETUP AUDIO OUTPUT /////////////////////////////////////////
 void initSound() {
   pinMode(speakerPin, OUTPUT);
   ASSR &= ~(_BV(EXCLK) | _BV(AS2));
@@ -105,87 +80,7 @@ void initSound() {
   sei();
 }
 
-void buttonsManager() {
-  bool pressBothButtons = false;
-  //start button 1
-  if (digitalRead(upButtonPin) == LOW) {
-    if (isButton1Active == false) {
-      isButton1Active = true;
-      button1Timer = millis();
-      // Serial.println("RIGHT button short press");
-    }
-    if ((millis() - button1Timer > longPress1Time) && (isLongPress1Active == false)) {
-      isLongPress1Active = true;
-      // Serial.println("RIGHT long press ON");
-    }
-  } else {
-    if (isButton1Active == true) {
-      if (isLongPress1Active == true) {
-        isLongPress1Active = false;
-
-        // Serial.println("RIGHT long press RELEASE");
-      } else {
-
-        if (programNumber != totalPrograms) {
-          programNumber++;
-        }
-        else if (programNumber == totalPrograms) {
-          programNumber = 1;
-        }
-        // Serial.println("RIGHT button short release");
-        // Serial.print("PROGRAM: ");
-        // Serial.println(programNumber);
-        ledCounter();
-      }
-      isButton1Active = false;
-    }
-  }
-  // end RIGHT button
-  // start LEFT button
-  if (digitalRead(downButtonPin) == LOW) {
-    if (isButton2Active == false) {
-      isButton2Active = true;
-      button2Timer = millis();
-      // Serial.println("LEFT button short press");
-    }
-    if ((millis() - button2Timer > longPress2Time) && (isLongPress2Active == false)) {
-      isLongPress2Active = true;
-
-      // Serial.println("LEFT BUTTON long press ON");
-    }
-  } else {
-    if (isButton2Active == true) {
-      if (isLongPress2Active == true) {
-        isLongPress2Active = false;
-        // Serial.println("LEFT BUTTON long press release");
-        pressBothButtons = true;
-        // isClockOutMode = !isClockOutMode;
-        // we only change program in short pressed, not long ones
-        programNumber++;
-
-      } else {
-        if (downButtonState == LOW) {
-          if (programNumber > 1) {
-            programNumber--;
-          } else if (programNumber == 1) {
-            programNumber = totalPrograms;
-          }
-          // Serial.println("LEFT BUTTON short release");
-        }
-        ledCounter();
-        isButton2Active = false;
-      }
-
-    }
-    
-    //end button 2
-    if (!isLongPress2Active && isLongPress1Active && pressBothButtons) {
-      // Serial.println("HACKKK");
-      isClockOutMode = !isClockOutMode;
-    }
-  }
-}
-
+///////////////////////////////////////////////////////////////
 // SETUP! /////////////////////////////////////////////////////
 void setup() {
   pinMode(ledPin, OUTPUT);
@@ -205,6 +100,7 @@ void setup() {
   }
 }
 
+///////////////////////////////////////////////////////////////
 // LOOP! //////////////////////////////////////////////////////
 void loop() {
   buttonsManager();
@@ -219,61 +115,30 @@ void loop() {
   }
 }
 
+///////////////////////////////////////////////////////////////
+// Handle Pots ////////////////////////////////////////////////
 uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
   return map(analogValue, 0, 1023, minVal, maxVal);
 }
 
 void potsManager() {
+  // Get Pots for vars a, b, and c
   int analogA = analogRead(A0); // A0
   int analogB = analogRead(A1); // A1
   int analogC = analogRead(A2); // A2
 
-  // a = map(analogRead(0), 0, 1023, aBottom, aTop);
-
+  // Scale vars a, b, and c, by the ranges for each equation
   a = scaleParam(analogA, equations[programNumber].aMin, equations[programNumber].aMax);
   b = scaleParam(analogB, equations[programNumber].bMin, equations[programNumber].bMax);
   c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
 
+  // Get Sample Rate Pot value and update sample rate
   SAMPLE_RATE = map(analogRead(3), 0, 1023, 256, 32768);
-
-  // this only if sample rate is different.
   OCR1A = F_CPU / SAMPLE_RATE;
 }
 
-void rightLongPressActions() {
-
-  //REVERSE TIME *********************
-  int actual_A_Pot = map(analogRead(0), 0, 1023, -7, 7);
-
-  if (old_A_Pot != actual_A_Pot) {
-
-    shift_A_Pot = actual_A_Pot;
-  }
-  old_A_Pot = actual_A_Pot;
-
-
-  if (shift_A_Pot == 0) {
-    //prevents the engine to stop
-    shift_A_Pot = 1;
-  }
-}
-void leftLongPressActions() {
-  // SAMPLE RATE *************************************
-
-  old_SAMPLE_RATE = SAMPLE_RATE;
-  //int actual_SAMPLE_RATE = analogRead(1);
-  SAMPLE_RATE = softDebounce(analogRead(0), SAMPLE_RATE);
-
-  // actual_SAMPLE_RATE=map(analogRead(1), 0, 1023, 256, 16384);
-  if (SAMPLE_RATE != old_SAMPLE_RATE) {
-    //el mapeo se hace aqui
-    //map(analogRead(1), 0, 1023, 256, 16384);
-    int mappedSAMPLE_RATE = map(SAMPLE_RATE, 0, 1023, 256, 16384);
-    OCR1A = F_CPU / mappedSAMPLE_RATE;
-  }
-
-}
-
+///////////////////////////////////////////////////////////////
+// Update LEDs ////////////////////////////////////////////////
 void ledCounter() {
   int val;
   if (isClockOutMode) {
@@ -293,6 +158,8 @@ void ledCounter() {
   digitalWrite(progBit3Pin, bitRead(val, 3));
 }
 
+///////////////////////////////////////////////////////////////
+// For Debugging //////////////////////////////////////////////
 void printValues() {
   Serial.print("program: ");
   Serial.print(programNumber);
@@ -304,18 +171,49 @@ void printValues() {
   Serial.println(c);
 }
 
-int  softDebounce(int  readCV, int  oldRead) {
-  if (abs(readCV - oldRead) > debounceRange) {
-    return readCV;
-  }
-  return oldRead;
-}
+///////////////////////////////////////////////////////////////
+// Interrupt Timer generates audio ////////////////////////////
 
 const uint8_t NUM_EQUATIONS = sizeof(equations) / sizeof(equations[0]);
+#define totalPrograms NUM_EQUATIONS
 
 ISR(TIMER1_COMPA_vect) {
   if (programNumber >= NUM_EQUATIONS) programNumber = 0; // Reset to first equation if out of bounds
   value = equations[programNumber].func(t, a, b, c);
   OCR2A = value;
   t++;
+}
+
+///////////////////////////////////////////////////////////////
+// Button Manager /////////////////////////////////////////////
+void buttonsManager() {
+  static bool upButtonLastState = HIGH;
+  static bool downButtonLastState = HIGH;
+
+  // Read current states
+  bool upButtonState = digitalRead(upButtonPin);
+  bool downButtonState = digitalRead(downButtonPin);
+
+  // Detect up button release (rising edge)
+  if (upButtonLastState == LOW && upButtonState == HIGH) {
+    programNumber++;
+    if (programNumber > totalPrograms) {
+      programNumber = 1;
+    }
+    ledCounter();
+  }
+
+  // Detect down button release (rising edge)
+  if (downButtonLastState == LOW && downButtonState == HIGH) {
+    if (programNumber > 1) {
+      programNumber--;
+    } else {
+      programNumber = totalPrograms;
+    }
+    ledCounter();
+  }
+
+  // Store button state for next frame
+  upButtonLastState = upButtonState;
+  downButtonLastState = downButtonState;
 }
