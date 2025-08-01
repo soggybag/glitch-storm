@@ -8,8 +8,8 @@ This is my take on GlitchStorm by Sphereical Sound. I made the following hcanges
 
 Updated schematic: 
 
-[Schematic](GlitchstormMod-Schem.png)
+![Schematic](GlitchstormMod-Schem.png)
 
 Breadboard Layout:
 
-[Schematic](Glitchstorm.png)
+![Schematic](Glitchstorm.png)
