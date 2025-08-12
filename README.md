@@ -17,6 +17,71 @@ Breadboard Layout:
 
 ![Schematic](GlitchStorm.png)
 
+## 🎵 What Are Bytebeats?
+
+**Bytebeats** are tiny computer programs that generate sound — often surprisingly musical — using just a **single line of math**.
+
+Instead of using samples or instruments, they generate raw audio by computing a new number (a byte: `0–255`) for every tiny time step. These numbers are sent straight to the audio output — and voilà, you get sound!
+
+### 💡 The Basic Formula
+
+```c
+output = t * (t >> 5 | t >> 8);
+```
+
+* `t` is the time counter (it just goes up every step).
+* The result is sent directly to a speaker or audio buffer.
+* The math makes patterns — rhythms, tones, even melodies.
+
+## 🧬 Where Did Bytebeats Come From?
+
+Bytebeats were first popularized in **2011** by a Finnish programmer named **viznut**, who posted videos and articles showing how you could make surprisingly cool music with just **a few characters of code**.
+
+He showed how you could use nothing more than:
+
+```c
+for (t = 0;; t++) putchar(t * (42 & t >> 10));
+```
+
+...and it would create a full-on chiptune jam — complete with rhythm and melody — **from just that**.
+
+### 📼 Why They Cool
+
+* **Ultra-minimalism**: Music from a single line of code!
+* **Retro vibes**: Sounds like early game consoles and synths.
+* **Hackable**: Just tweak some math and hear something totally new.
+* **Fun + Unexpected**: Equations create strange, beautiful sounds.
+
+### 🧪 What Makes Bytebeats Interesting?
+
+* Bitwise operations like `>>`, `|`, `&`, and `^` shape waveforms in strange and unique ways.
+* Patterns emerge from the structure of binary math — **music from math**!
+* Despite their simplicity, they often produce **melodies, rhythms, and harmonies**.
+
+### 🔧 Bytebeats in Glitch Storm
+
+In Glitch Storm:
+
+* Each equation is a **bytebeat**.
+* Parameters `a`, `b`, `c` (controlled by knobs) modify the math in real-time.
+* The Arduino generates audio by running these equations inside a fast timer interrupt.
+
+## 🧠 Bytebeat Trivia
+
+* Bytebeats are not just art — they’re a **math experiment**, a **programming puzzle**, and **music** all in one.
+* Some equations resemble **fractal patterns** or **cellular automata**.
+* You can explore an infinite sound universe by changing just one symbol.
+
+### 🛠 Want to Try Your Own?
+
+Start with:
+
+```c
+return t * ((t >> 8) & (t >> 5));
+```
+
+...then add parentheses, `^`, `|`, `*`, or constants and hear what happens!
+
 ## 🔊 LM386 Amplifier – Audio Output for Glitch Storm
 
 Glitch Storm generates audio using the Arduino Nano’s PWM (Pulse Width Modulation) signal. While this creates cool digital sound, it's **too weak to drive a speaker directly** — we need an amplifier.
