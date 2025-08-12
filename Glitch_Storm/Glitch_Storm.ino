@@ -4,8 +4,8 @@
 // Some equations are empty. You can collaborate sending your new finding cool sounding ones to the repository
 // https://github.com/spherical-sound-society/glitch-storm
 
-// This is my take on Glitch Storm. I revised the original files and made a few small changes to suit 
-// myself in software design. 
+// This is my take on Glitch Storm. I revised the original files and made a few changes to suit 
+// my software design style.
 
 #include <stdint.h>
 #include <avr/interrupt.h>
@@ -14,87 +14,93 @@
 
 #include "equations.h"
 
-#define isDebugging   false
+#define isDebugging   false // Set to true to enable serial output for debugging
 
-#define ledPin        13
-#define speakerPin    11
-#define upButtonPin   2
-#define downButtonPin 4
-#define progBit0Pin   7
-#define progBit1Pin   8
-#define progBit2Pin   9
-#define progBit3Pin   10
+#define ledPin        13 // On-board LED
+#define speakerPin    11 // PWM pin for audio output
+#define upButtonPin   2  // Pin for the "up" button
+#define downButtonPin 4  // Pin for the "down" button
 
-long t = 0;
-volatile uint8_t a = 0, b = 0, c = 0;
-volatile int value;
+// Pins for the 4 LEDs showing the current program number in binary
+#define progBit0Pin   7  // Pin for the "program bit 0"
+#define progBit1Pin   8  // Pin for the "program bit 1"
+#define progBit2Pin   9  // Pin for the "program bit 2"
+#define progBit3Pin   10 // Pin for the "program bit 3"
 
-byte programNumber = 0;
-byte upButtonState = 0;
-byte downButtonState = 0;
-byte clocksOut = 0;
+long t = 0;                           // time variable for equations
+volatile uint8_t a = 0, b = 0, c = 0; // parameters for equations
+volatile int value;                   // current output value
 
-bool isClockOutMode = false;
+byte programNumber = 0;   // current program number
+byte upButtonState = 0;   // state of the "up" button
+byte downButtonState = 0; // state of the "down" button
+byte clocksOut = 0;       // number of clock outputs
 
-static unsigned long time_now = 0;
+bool isClockOutMode = false; 
 
-int SAMPLE_RATE = 16384;
+static unsigned long time_now = 0; // For debugging
+
+int SAMPLE_RATE = 16384; // Initial sample rate
 
 
 ///////////////////////////////////////////////////////////////
 // SETUP AUDIO OUTPUT /////////////////////////////////////////
+
+// Initialize sound output
 void initSound() {
-  pinMode(speakerPin, OUTPUT);
-  ASSR &= ~(_BV(EXCLK) | _BV(AS2));
-  TCCR2A |= _BV(WGM21) | _BV(WGM20);
-  TCCR2B &= ~_BV(WGM22);
+  pinMode(speakerPin, OUTPUT);       // Set speaker pin as output
+  ASSR &= ~(_BV(EXCLK) | _BV(AS2));  // Use internal clock for Timer 2 (p.154)
+  TCCR2A |= _BV(WGM21) | _BV(WGM20); // Set Fast PWM mode (p.155)
+  TCCR2B &= ~_BV(WGM22);             // (part of WGM22 is in TCCR2B)
 
   // Do non-inverting PWM on pin OC2A (p.155)
   // On the Arduino this is pin 11.
-  TCCR2A = (TCCR2A | _BV(COM2A1)) & ~_BV(COM2A0);
-  TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0));
+  TCCR2A = (TCCR2A | _BV(COM2A1)) & ~_BV(COM2A0); // Clear OC2A on Compare Match, set at BOTTOM (non-inverting mode)
+  TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0)); // Disconnect OC2B
   // No prescaler (p.158)
-  TCCR2B = (TCCR2B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10);
+  TCCR2B = (TCCR2B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10); // Set CS22, CS21, CS20 bits for no prescaling
 
   // Set initial pulse width to the first sample.
-  OCR2A = 0;
+  OCR2A = 0; // Output Compare Register 2A (8-bit, p.156)
 
   // Set up Timer 1 to send a sample every interrupt.
-  cli();
+  cli(); // Disable interrupts while we set up
 
   // Set CTC mode (Clear Timer on Compare Match) (p.133)
   // Have to set OCR1A *after*, otherwise it gets reset to 0!
-  TCCR1B = (TCCR1B & ~_BV(WGM13)) | _BV(WGM12);
-  TCCR1A = TCCR1A & ~(_BV(WGM11) | _BV(WGM10));
+  TCCR1B = (TCCR1B & ~_BV(WGM13)) | _BV(WGM12); // Set WGM13:0 to 0100
+  TCCR1A = TCCR1A & ~(_BV(WGM11) | _BV(WGM10)); // (part of WGM13:0 is in TCCR1A)
 
   // No prescaler (p.134)
-  TCCR1B = (TCCR1B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10);
+  TCCR1B = (TCCR1B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10); // Set CS12, CS11, CS10 bits for no prescaling
 
   // Set the compare register (OCR1A).
   // OCR1A is a 16-bit register, so we have to do this with
   // interrupts disabled to be safe.
-  OCR1A = F_CPU / SAMPLE_RATE;    // 16e6 / 8000 = 2000
+  OCR1A = F_CPU / SAMPLE_RATE; // 16e6 / 8000 = 2000
   // Enable interrupt when TCNT1 == OCR1A (p.136)
-  TIMSK1 |= _BV(OCIE1A);
+  TIMSK1 |= _BV(OCIE1A); // Enable Timer1 Compare A Match interrupt
 
-  sei();
+  sei(); // Re-enable interrupts
 }
 
 ///////////////////////////////////////////////////////////////
 // SETUP! /////////////////////////////////////////////////////
+
 void setup() {
-  pinMode(ledPin, OUTPUT);
-  pinMode(progBit0Pin, OUTPUT);
-  pinMode(progBit1Pin, OUTPUT);
-  pinMode(progBit2Pin, OUTPUT);
-  pinMode(progBit3Pin, OUTPUT);
+  pinMode(ledPin, OUTPUT);      // On-board LED
+  pinMode(progBit0Pin, OUTPUT); // Program bit 0
+  pinMode(progBit1Pin, OUTPUT); // Program bit 1
+  pinMode(progBit2Pin, OUTPUT); // Program bit 2
+  pinMode(progBit3Pin, OUTPUT); // Program bit 3
 
-  pinMode(upButtonPin, INPUT_PULLUP);
-  pinMode(downButtonPin, INPUT_PULLUP);
+  pinMode(upButtonPin, INPUT_PULLUP);   // Use internal pull-up resistor
+  pinMode(downButtonPin, INPUT_PULLUP); // Use internal pull-up resistor
 
-  initSound();
-  ledCounter();
+  initSound();  // Initialize audio output
+  ledCounter(); // Update LEDs to show initial program number
 
+  // Initialize serial for debugging
   if (isDebugging) {
     Serial.begin(9600);
   }
@@ -102,11 +108,12 @@ void setup() {
 
 ///////////////////////////////////////////////////////////////
 // LOOP! //////////////////////////////////////////////////////
-void loop() {
-  buttonsManager();
-  potsManager();
 
-  //slow loop show serial once every second
+void loop() {
+  buttonsManager(); // Check buttons and update program number
+  potsManager();    // Read pots and update a, b, c, and sample rate
+
+  // slow loop show serial once every second
   if (isDebugging) {
     if (millis() > time_now + 1000) {
       time_now = millis();
@@ -117,10 +124,13 @@ void loop() {
 
 ///////////////////////////////////////////////////////////////
 // Handle Pots ////////////////////////////////////////////////
+
+// Scale analog input (0-1023) to a value between minVal and maxVal
 uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
   return map(analogValue, 0, 1023, minVal, maxVal);
 }
 
+// Read pots and update a, b, c, and sample rate
 void potsManager() {
   // Get Pots for vars a, b, and c
   int analogA = analogRead(A0); // A0
@@ -134,11 +144,13 @@ void potsManager() {
 
   // Get Sample Rate Pot value and update sample rate
   SAMPLE_RATE = map(analogRead(3), 0, 1023, 256, 32768);
-  OCR1A = F_CPU / SAMPLE_RATE;
+  OCR1A = F_CPU / SAMPLE_RATE; // Update Timer1 compare register
 }
 
 ///////////////////////////////////////////////////////////////
 // Update LEDs ////////////////////////////////////////////////
+
+// Update the 4 LEDs to show the current program number in binary
 void ledCounter() {
   int val;
   if (isClockOutMode) {
@@ -160,6 +172,8 @@ void ledCounter() {
 
 ///////////////////////////////////////////////////////////////
 // For Debugging //////////////////////////////////////////////
+
+// Print current program number and parameters a, b, c to serial
 void printValues() {
   Serial.print("program: ");
   Serial.print(programNumber);
@@ -174,46 +188,52 @@ void printValues() {
 ///////////////////////////////////////////////////////////////
 // Interrupt Timer generates audio ////////////////////////////
 
+// Number of equations
 const uint8_t NUM_EQUATIONS = sizeof(equations) / sizeof(equations[0]);
 #define totalPrograms NUM_EQUATIONS
 
+// Timer1 Compare A interrupt service routine
 ISR(TIMER1_COMPA_vect) {
   if (programNumber >= NUM_EQUATIONS) programNumber = 0; // Reset to first equation if out of bounds
-  value = equations[programNumber].func(t, a, b, c);
-  OCR2A = value;
-  t++;
+  value = equations[programNumber].func(t, a, b, c); // Compute next sample value
+  OCR2A = value; // Update PWM duty cycle for audio output
+  t++; // Increment time variable
 }
 
 ///////////////////////////////////////////////////////////////
 // Button Manager /////////////////////////////////////////////
+
+// Handle button presses to change program number
 void buttonsManager() {
-  static bool upButtonLastState = HIGH;
-  static bool downButtonLastState = HIGH;
+  static bool upButtonLastState = HIGH;   // Buttons are active LOW
+  static bool downButtonLastState = HIGH; // Buttons are active LOW
 
   // Read current states
-  bool upButtonState = digitalRead(upButtonPin);
-  bool downButtonState = digitalRead(downButtonPin);
+  bool upButtonState = digitalRead(upButtonPin);     // Read "up" button state
+  bool downButtonState = digitalRead(downButtonPin); // Read "down" button state
 
   // Detect up button release (rising edge)
   if (upButtonLastState == LOW && upButtonState == HIGH) {
-    programNumber++;
-    if (programNumber > totalPrograms) {
-      programNumber = 1;
+    programNumber++; // Increment program number
+    // Wrap around if exceeding total programs
+    if (programNumber > totalPrograms) { 
+      programNumber = 1; // Skip 0 as it's empty ???
     }
-    ledCounter();
+    ledCounter(); // Update LEDs to show new program number
   }
 
   // Detect down button release (rising edge)
   if (downButtonLastState == LOW && downButtonState == HIGH) {
+    // Decrement program number with wrap-around
     if (programNumber > 1) {
-      programNumber--;
+      programNumber--; // Skip 0 as it's empty ???
     } else {
-      programNumber = totalPrograms;
+      programNumber = totalPrograms; // Wrap around to last program
     }
-    ledCounter();
+    ledCounter(); // Update LEDs to show new program number
   }
 
   // Store button state for next frame
-  upButtonLastState = upButtonState;
-  downButtonLastState = downButtonState;
+  upButtonLastState = upButtonState;     // Store "up" button state
+  downButtonLastState = downButtonState; // Store "down" button state
 }
