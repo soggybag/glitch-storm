@@ -36,8 +36,6 @@ byte upButtonState = 0;   // state of the "up" button
 byte downButtonState = 0; // state of the "down" button
 byte clocksOut = 0;       // number of clock outputs
 
-bool isClockOutMode = false; 
-
 static unsigned long time_now = 0; // For debugging
 
 int SAMPLE_RATE = 16384; // Initial sample rate
@@ -152,22 +150,10 @@ void potsManager() {
 
 // Update the 4 LEDs to show the current program number in binary
 void ledCounter() {
-  int val;
-  if (isClockOutMode) {
-    //show clocks
-    clocksOut++;
-    if (clocksOut == 16) {
-      clocksOut = 0;
-    }
-    val = clocksOut;
-  } else {
-    //show program number in binary
-    val = programNumber;
-  }
-  digitalWrite(progBit0Pin, bitRead(val, 0));
-  digitalWrite(progBit1Pin, bitRead(val, 1));
-  digitalWrite(progBit2Pin, bitRead(val, 2));
-  digitalWrite(progBit3Pin, bitRead(val, 3));
+  digitalWrite(progBit0Pin, bitRead(programNumber, 0));
+  digitalWrite(progBit1Pin, bitRead(programNumber, 1));
+  digitalWrite(progBit2Pin, bitRead(programNumber, 2));
+  digitalWrite(progBit3Pin, bitRead(programNumber, 3));
 }
 
 ///////////////////////////////////////////////////////////////
