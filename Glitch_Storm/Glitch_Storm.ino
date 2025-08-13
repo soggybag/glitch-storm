@@ -45,11 +45,13 @@ int SAMPLE_RATE = 16384; // Initial sample rate
 // SETUP AUDIO OUTPUT /////////////////////////////////////////
 
 // Initialize sound output
+// Note: this function sets up timer 1 and 2 and nothing there should be modified. 
 void initSound() {
   pinMode(speakerPin, OUTPUT);       // Set speaker pin as output
 
   // Timer 2 generates audio on PWM pin OC2A (Arduino pin 11)
-  ASSR &= ~(_BV(EXCLK) | _BV(AS2));  // Use internal clock for Timer 2 (p.154)
+  // ASSR -> Async Shift Register, TCCR2A / TCCR2B: Timer/Counter Control Registers A and B
+  ASSR &= ~(_BV(EXCLK) | _BV(AS2));  // Use internal clock for Timer 2 (p.154) _BV() bit value
   TCCR2A |= _BV(WGM21) | _BV(WGM20); // Set Fast PWM mode (p.155)
   TCCR2B &= ~_BV(WGM22);             // (part of WGM22 is in TCCR2B)
 
@@ -90,6 +92,7 @@ void initSound() {
 ///////////////////////////////////////////////////////////////
 // SETUP! /////////////////////////////////////////////////////
 
+// Initialize pins and serial, and initialize audio output
 void setup() {
   pinMode(ledPin, OUTPUT);      // On-board LED
   pinMode(progBit0Pin, OUTPUT); // Program bit 0
@@ -112,6 +115,8 @@ void setup() {
 ///////////////////////////////////////////////////////////////
 // LOOP! //////////////////////////////////////////////////////
 
+// Main loop
+// Note: audio is handled in the interrupt service routine (ISR(TIMER1_COMPA_vect) below)
 void loop() {
   buttonsManager(); // Check buttons and update program number
   potsManager();    // Read pots and update a, b, c, and sample rate
@@ -128,6 +133,7 @@ void loop() {
 ///////////////////////////////////////////////////////////////
 // Handle Pots ////////////////////////////////////////////////
 
+// Helper function to scale parameters
 // Scale analog input (0-1023) to a value between minVal and maxVal
 uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
   return map(analogValue, 0, 1023, minVal, maxVal);
@@ -136,9 +142,9 @@ uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
 // Read pots and update a, b, c, and sample rate
 void potsManager() {
   // Get Pots for vars a, b, and c
-  int analogA = analogRead(A0); // A0
-  int analogB = analogRead(A1); // A1
-  int analogC = analogRead(A2); // A2
+  int analogA = analogRead(A0); // A0 pin 19
+  int analogB = analogRead(A1); // A1 pin 20
+  int analogC = analogRead(A2); // A2 pin 21
 
   // Scale vars a, b, and c, by the ranges for each equation
   a = scaleParam(analogA, equations[programNumber].aMin, equations[programNumber].aMax);
@@ -146,6 +152,7 @@ void potsManager() {
   c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
 
   // Get Sample Rate Pot value and update sample rate
+  // Should this be A3? maybe use scaleParam() here? For consistency?
   SAMPLE_RATE = map(analogRead(3), 0, 1023, 256, 32768);
   OCR1A = F_CPU / SAMPLE_RATE; // Update Timer1 compare register
 }
@@ -153,6 +160,7 @@ void potsManager() {
 ///////////////////////////////////////////////////////////////
 // Update LEDs ////////////////////////////////////////////////
 
+// Helper function to update the 4 LEDs
 // Update the 4 LEDs to show the current program number in binary
 void ledCounter() {
   digitalWrite(progBit0Pin, bitRead(programNumber, 0));
@@ -164,6 +172,7 @@ void ledCounter() {
 ///////////////////////////////////////////////////////////////
 // For Debugging //////////////////////////////////////////////
 
+// Helper function for debugging. 
 // Print current program number and parameters a, b, c to serial
 void printValues() {
   Serial.print("program: ");
@@ -179,11 +188,12 @@ void printValues() {
 ///////////////////////////////////////////////////////////////
 // Interrupt Timer generates audio ////////////////////////////
 
-// Number of equations
+// Get the Number of equations
 const uint8_t NUM_EQUATIONS = sizeof(equations) / sizeof(equations[0]);
 #define totalPrograms NUM_EQUATIONS
 
 // Timer1 Compare A interrupt service routine
+// This generates audio samples from bytebeat equations
 ISR(TIMER1_COMPA_vect) {
   if (programNumber >= NUM_EQUATIONS) programNumber = 0; // Reset to first equation if out of bounds
   value = equations[programNumber].func(t, a, b, c); // Compute next sample value
@@ -194,7 +204,7 @@ ISR(TIMER1_COMPA_vect) {
 ///////////////////////////////////////////////////////////////
 // Button Manager /////////////////////////////////////////////
 
-// Handle button presses to change program number
+// Helper function to handle button presses to change program number
 void buttonsManager() {
   static bool upButtonLastState = HIGH;   // Buttons are active LOW
   static bool downButtonLastState = HIGH; // Buttons are active LOW
@@ -203,7 +213,7 @@ void buttonsManager() {
   bool upButtonState = digitalRead(upButtonPin);     // Read "up" button state
   bool downButtonState = digitalRead(downButtonPin); // Read "down" button state
 
-  // Detect up button release (rising edge)
+  // Detect up button (D2 pin 5) release (rising edge)
   if (upButtonLastState == LOW && upButtonState == HIGH) {
     programNumber++; // Increment program number
     // Wrap around if exceeding total programs
@@ -213,7 +223,7 @@ void buttonsManager() {
     ledCounter(); // Update LEDs to show new program number
   }
 
-  // Detect down button release (rising edge)
+  // Detect down button (D4 pin 7) release (rising edge)
   if (downButtonLastState == LOW && downButtonState == HIGH) {
     // Decrement program number with wrap-around
     if (programNumber > 1) {
