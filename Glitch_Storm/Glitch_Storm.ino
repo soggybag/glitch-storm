@@ -47,6 +47,8 @@ int SAMPLE_RATE = 16384; // Initial sample rate
 // Initialize sound output
 void initSound() {
   pinMode(speakerPin, OUTPUT);       // Set speaker pin as output
+
+  // Timer 2 generates audio on PWM pin OC2A (Arduino pin 11)
   ASSR &= ~(_BV(EXCLK) | _BV(AS2));  // Use internal clock for Timer 2 (p.154)
   TCCR2A |= _BV(WGM21) | _BV(WGM20); // Set Fast PWM mode (p.155)
   TCCR2B &= ~_BV(WGM22);             // (part of WGM22 is in TCCR2B)
@@ -64,6 +66,7 @@ void initSound() {
   // Set up Timer 1 to send a sample every interrupt.
   cli(); // Disable interrupts while we set up
 
+  // Timer 1 is a 16-bit timer (p.132)
   // Set CTC mode (Clear Timer on Compare Match) (p.133)
   // Have to set OCR1A *after*, otherwise it gets reset to 0!
   TCCR1B = (TCCR1B & ~_BV(WGM13)) | _BV(WGM12); // Set WGM13:0 to 0100
@@ -73,9 +76,11 @@ void initSound() {
   TCCR1B = (TCCR1B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10); // Set CS12, CS11, CS10 bits for no prescaling
 
   // Set the compare register (OCR1A).
-  // OCR1A is a 16-bit register, so we have to do this with
+  // OCR1A is a 16-bit register, we have to do this with
   // interrupts disabled to be safe.
   OCR1A = F_CPU / SAMPLE_RATE; // 16e6 / 8000 = 2000
+  // Timer 1 calls Interrupt Service Routine ISR(TIMER1_COMPA_vect) at SAMPLE_RATE
+
   // Enable interrupt when TCNT1 == OCR1A (p.136)
   TIMSK1 |= _BV(OCIE1A); // Enable Timer1 Compare A Match interrupt
 
