@@ -45,7 +45,7 @@ for (t = 0;; t++) putchar(t * (42 & t >> 10));
 
 ...and it would create a full-on chiptune jam — complete with rhythm and melody — **from just that**.
 
-### 📼 Why They Cool
+### 📼 Why Bytebeats are Cool
 
 * **Ultra-minimalism**: Music from a single line of code!
 * **Retro vibes**: Sounds like early game consoles and synths.
@@ -58,7 +58,7 @@ for (t = 0;; t++) putchar(t * (42 & t >> 10));
 * Patterns emerge from the structure of binary math — **music from math**!
 * Despite their simplicity, they often produce **melodies, rhythms, and harmonies**.
 
-### 🔧 Bytebeats in Glitch Storm
+### 🔧 Glitch Storm Bytebeats
 
 In Glitch Storm:
 
@@ -90,6 +90,8 @@ Glitch Storm generates audio using the Arduino Nano’s PWM (Pulse Width Modulat
 
 The **LM386** is a tiny, low-voltage audio amplifier chip that’s perfect for simple sound projects. In this setup, it boosts the audio signal just enough to drive a small speaker or headphones.
 
+The project as presented powers the LM386 with 5v from the Nano. The LM386 can run from 4v to 12v, using a higher voltage will provide more volume.
+
 ### ⚙️ How It's Wired
 
 * **Input (Pin 3)** of the LM386 connects to the Nano’s **PWM output pin** (Pin 11).
@@ -108,10 +110,12 @@ You're using the **simplest mode** of the LM386 — no gain resistor or capacito
 * Gain of 20: The LM386's default
 * You can go up to 200 by adding a capacitor between Pins 1 and 8 — not needed here.
 
+I've added a pot between the Nano's ouput and the input of the LM386 to act as a volume control. This allows you to control the output gain from 0 to 20. 
+
 ### 🧪 Tips for Builders
 
-* Use an **8Ω speaker** or small headphones.
-* For a cleaner signal, you can add a small capacitor (e.g. **100nF**) between **Vcc and GND** close to the LM386 to reduce noise.
+* Use an **8Ω speaker** or headphones.
+* Add a small capacitor (e.g. **100nF**) between **Vcc and GND** close to the LM386 to reduce noise.
 * The LM386 will not give super loud output — but it’s **perfect for glitchy digital sounds**!
 
 ### 🔌 Power Note
@@ -130,6 +134,8 @@ The amplifier is powered from the **Nano’s 5V output**, so no extra batteries 
 ### 🧠 **Overview: What is Glitch Storm?**
 
 **Glitch Storm** is a minimalist audio synthesizer that uses *Bytebeat-style* math equations to generate interesting, glitchy sound patterns. These equations are evaluated rapidly in an **interrupt** and the results are sent to a speaker via **PWM (Pulse Width Modulation)** — no DAC or audio chip needed!
+
+For more detail, see the comments in the source code. 
 
 ## 🧱 Code Breakdown by Section
 
@@ -218,7 +224,9 @@ void initSound() {
 
 * **Timer2** generates PWM audio by changing the duty cycle on pin 11.
 * **Timer1** generates an **interrupt** at the audio sample rate.
-* Inside the interrupt, we evaluate the current equation and update the audio signal.
+  * Inside the interrupt, we evaluate the current equation and update the audio PWM value.
+
+Read more about timers PWM here: https://docs.arduino.cc/tutorials/generic/secrets-of-arduino-pwm/
 
 ### 🎛 **buttonsManager() — Handle Button Presses**
 
@@ -304,6 +312,10 @@ void loop() {
 
 * Regularly checks buttons and knobs.
 * Prints variable values once per second if debugging is enabled.
+
+**Note!** Do to the use of Timers and Interrupts, code here is not run on the regular schedule. Therefore printing serial ouput will be inconsistent or nonexistent. 
+
+**If you are debugging with serial output turning the sample rate down will allow serial messages to display!**
 
 ### 🎚 **potsManager() — Reads Potentiometer Values**
 
@@ -512,10 +524,9 @@ uint8_t equation_99(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
 { equation_99, 0, 10, 0, 255, 0, 255 },
 ```
 
-Let me know if you'd like:
+## Conclusion! 
 
-* A worksheet for designing equations
-* A printable cheat sheet of bitwise operations
-* Commented source files for learners
+See the source code for more comments describing the inner workings of this project! 
 
 Happy glitching! ⚡🎧
+
