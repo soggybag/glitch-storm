@@ -46,23 +46,28 @@ int SAMPLE_RATE = 16384; // Initial sample rate
 
 // Initialize sound output
 // Note: this function sets up timer 1 and 2 and nothing here should be modified. 
+// Read about timers here: https://docs.arduino.cc/tutorials/generic/secrets-of-arduino-pwm/
 void initSound() {
   pinMode(speakerPin, OUTPUT);       // Set speaker pin as output
 
   // Timer 2 generates audio on PWM pin OC2A (Arduino pin 11)
   // ASSR -> Async Shift Register, TCCR2A / TCCR2B: Timer/Counter Control Registers A and B
+  // WGMn -> Waveform Generation Mode n
   ASSR &= ~(_BV(EXCLK) | _BV(AS2));  // Use internal clock for Timer 2 (p.154) _BV() bit value
   TCCR2A |= _BV(WGM21) | _BV(WGM20); // Set Fast PWM mode (p.155)
   TCCR2B &= ~_BV(WGM22);             // (part of WGM22 is in TCCR2B)
 
   // Do non-inverting PWM on pin OC2A (p.155)
   // On the Arduino this is pin 11.
+  // TCCRnA -> Timer/Counter Control Register nA
+  // COMnA -> Compare Output Mode nA
   TCCR2A = (TCCR2A | _BV(COM2A1)) & ~_BV(COM2A0); // Clear OC2A on Compare Match, set at BOTTOM (non-inverting mode)
   TCCR2A &= ~(_BV(COM2B1) | _BV(COM2B0)); // Disconnect OC2B
   // No prescaler (p.158)
   TCCR2B = (TCCR2B & ~(_BV(CS12) | _BV(CS11))) | _BV(CS10); // Set CS22, CS21, CS20 bits for no prescaling
 
   // Set initial pulse width to the first sample.
+  // OCRnA -> Output Compare Register nA
   OCR2A = 0; // Output Compare Register 2A (8-bit, p.156)
 
   // Set up Timer 1 to send a sample every interrupt.
