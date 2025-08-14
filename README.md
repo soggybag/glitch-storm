@@ -1,19 +1,22 @@
 # Glitch-Storm
 
-This is my take on GlitchStorm by Sphereical Sound. I made the following changes: 
+This is my take on [Glitch-Storm](https://github.com/spherical-sound-society/glitch-storm) by [Sphereical Sound Society](https://github.com/spherical-sound-society). This is my fork of that project. 
 
-- Added a an LM386 as an ouput buffer (see the updated schematic)
+I made the following changes: 
+
+- Added a an LM386 as an output buffer (see the updated schematic)
 - Added an extra pot to control the sample rate
-- Update the software (see notes and comments)
-- Removed easter egg mode
+- Updated and refactored codebase (see notes and comments)
+- Added detailed comments
+- Removed easter egg mode 
 
-For more info check this blog post: http://www.super-freq.com/wp-admin/post.php?post=6763&action=edit
+I presented this project at Noisebridge, see this blog post: http://www.super-freq.com/glitchstorm-at-noisebridge/
 
-Updated schematic: 
+**Updated schematic:** 
 
 ![Schematic](GlitchstormMod-Schem.png)
 
-Breadboard Layout:
+**Breadboard Layout:**
 
 ![Schematic](GlitchStorm.png)
 
@@ -21,7 +24,7 @@ Breadboard Layout:
 
 **Bytebeats** are tiny computer programs that generate sound — often surprisingly musical — using just a **single line of math**.
 
-Instead of using samples or instruments, they generate raw audio by computing a new number (a byte: `0–255`) for every tiny time step. These numbers are sent straight to the audio output — and voilà, you get sound!
+Instead of using samples or instruments, bytebeats generate raw audio by computing a new number (a byte: `0–255`) for every tiny time step. These numbers are sent straight to the audio output.
 
 ### 💡 The Basic Formula
 
@@ -88,9 +91,9 @@ Glitch Storm generates audio using the Arduino Nano’s PWM (Pulse Width Modulat
 
 ### 💡 LM386
 
-The **LM386** is a tiny, low-voltage audio amplifier chip that’s perfect for simple sound projects. In this setup, it boosts the audio signal just enough to drive a small speaker or headphones.
+The **LM386** is a tiny, low-voltage audio amplifier chip that’s perfect for simple sound projects. In this setup, it boosts the audio signal enough to drive a small speaker or headphones.
 
-The project as presented powers the LM386 with 5v from the Nano. The LM386 can run from 4v to 12v, using a higher voltage will provide more volume.
+The project as presented powers the LM386 with 5v from the Nano. The LM386 can run from 4v to 12v, using a higher voltage will provide more output.
 
 ### ⚙️ How It's Wired
 
@@ -107,10 +110,10 @@ You're using the **simplest mode** of the LM386 — no gain resistor or capacito
 "Gain" just means **how much louder** the amplifier makes the signal.
 
 * Gain of 1: No amplification
-* Gain of 20: The LM386's default
-* You can go up to 200 by adding a capacitor between Pins 1 and 8 — not needed here.
+* Gain of 20: The LM386's default, boosts the output x 20
+* You can go up to x 200 by adding a capacitor between Pins 1 and 8 — not used here.
 
-I've added a pot between the Nano's ouput and the input of the LM386 to act as a volume control. This allows you to control the output gain from 0 to 20. 
+I've added a pot between the Nano's ouput and the input of the LM386 to act as a volume control. This allows you to control the input to control the output gain from 0 to 20. 
 
 ### 🧪 Tips for Builders
 
@@ -135,7 +138,7 @@ The amplifier is powered from the **Nano’s 5V output**, so no extra batteries 
 
 **Glitch Storm** is a minimalist audio synthesizer that uses *Bytebeat-style* math equations to generate interesting, glitchy sound patterns. These equations are evaluated rapidly in an **interrupt** and the results are sent to a speaker via **PWM (Pulse Width Modulation)** — no DAC or audio chip needed!
 
-For more detail, see the comments in the source code. 
+For more detail, see the comments in the source code.
 
 ## 🧱 Code Breakdown by Section
 
@@ -313,10 +316,6 @@ void loop() {
 * Regularly checks buttons and knobs.
 * Prints variable values once per second if debugging is enabled.
 
-**Note!** Do to the use of Timers and Interrupts, code here is not run on the regular schedule. Therefore printing serial ouput will be inconsistent or nonexistent. 
-
-**If you are debugging with serial output turning the sample rate down will allow serial messages to display!**
-
 ### 🎚 **potsManager() — Reads Potentiometer Values**
 
 ```cpp
@@ -355,7 +354,6 @@ uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
 
 ```cpp
 void ledCounter() {
-  int val = isClockOutMode ? clocksOut++ % 16 : programNumber;
   digitalWrite(progBit0Pin, bitRead(val, 0));
   digitalWrite(progBit1Pin, bitRead(val, 1));
   digitalWrite(progBit2Pin, bitRead(val, 2));
@@ -366,7 +364,6 @@ void ledCounter() {
 **Explanation:**
 
 * Displays `programNumber` in binary using 4 LEDs.
-* Optionally flashes `clocksOut` in "clock out mode" (experimental).
 
 ### 🛠 **printValues() — Debug Info**
 
@@ -387,6 +384,8 @@ void printValues() {
 
 * Prints the current state to the Serial Monitor (if `isDebugging` is true).
 
+**Note!** Do to the use of Timers and Interrupts, code here is not run on the regular schedule. Therefore printing serial ouput will be inconsistent or nonexistent. **If you are debugging with serial output turning the sample rate down will allow serial messages to display!**
+
 ### ⏱ **ISR — Audio Interrupt: Runs at Sample Rate**
 
 ```cpp
@@ -402,7 +401,7 @@ ISR(TIMER1_COMPA_vect) {
 
 * **Runs very frequently** (16kHz+).
 * Evaluates the current equation, sends output to the speaker via PWM.
-* This is what actually **generates the sound**!
+* This is what **generates the sound**!
 
 ## ✅ What You Can Modify
 
@@ -517,10 +516,12 @@ a = scaleParam(analogA, equations[programNumber].aMin, equations[programNumber].
 Here’s a blank equation template:
 
 ```cpp
+// Define a new equation
 uint8_t equation_99(uint32_t t, uint8_t a, uint8_t b, uint8_t c) {
   return (t >> a) * b + (t & c);
 }
-// Add this to the array:
+
+// Add this to the array and set min and max for a, b, and c parameters:
 { equation_99, 0, 10, 0, 255, 0, 255 },
 ```
 
