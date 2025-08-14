@@ -45,7 +45,7 @@ int SAMPLE_RATE = 16384; // Initial sample rate
 // SETUP AUDIO OUTPUT /////////////////////////////////////////
 
 // Initialize sound output
-// Note: this function sets up timer 1 and 2 and nothing there should be modified. 
+// Note: this function sets up timer 1 and 2 and nothing here should be modified. 
 void initSound() {
   pinMode(speakerPin, OUTPUT);       // Set speaker pin as output
 
@@ -87,6 +87,9 @@ void initSound() {
   TIMSK1 |= _BV(OCIE1A); // Enable Timer1 Compare A Match interrupt
 
   sei(); // Re-enable interrupts
+
+  // Timer 2 handles audio output via PWM on pin 11
+  // Timer 1 runs bytebeat calculations with an interrupt at the sample rate
 }
 
 ///////////////////////////////////////////////////////////////
