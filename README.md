@@ -20,6 +20,8 @@ I presented this project at Noisebridge, see this blog post: http://www.super-fr
 
 ![Schematic](GlitchStorm.png)
 
+[Print friendly pdf](Glitchstorm Print.pdf)
+
 ## 🎵 What Are Bytebeats?
 
 **Bytebeats** are tiny computer programs that generate sound — often surprisingly musical — using just a **single line of math**.
