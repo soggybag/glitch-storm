@@ -143,6 +143,7 @@ void loop() {
 
 // Helper function to scale parameters
 // Scale analog input (0-1023) to a value between minVal and maxVal
+// returns a uint 8 (0-255)
 uint8_t scaleParam(int analogValue, uint8_t minVal, uint8_t maxVal) {
   return map(analogValue, 0, 1023, minVal, maxVal);
 }
@@ -159,9 +160,9 @@ void potsManager() {
   b = scaleParam(analogB, equations[programNumber].bMin, equations[programNumber].bMax);
   c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
 
-  // Get Sample Rate Pot value and update sample rate
-  // Should this be A3? maybe use scaleParam() here? For consistency?
-  SAMPLE_RATE = map(analogRead(3), 0, 1023, 256, 32768);
+  // Sample rate uses a unit 16, can't use scaleParam here! 
+  SAMPLE_RATE = map(analogRead(A3), 0, 1023, 256, 32768);
+ 
   OCR1A = F_CPU / SAMPLE_RATE; // Update Timer1 compare register
 }
 
@@ -226,7 +227,7 @@ void buttonsManager() {
     programNumber++; // Increment program number
     // Wrap around if exceeding total programs
     if (programNumber > totalPrograms) { 
-      programNumber = 1; // Skip 0 as it's empty ???
+      programNumber = 0; 
     }
     ledCounter(); // Update LEDs to show new program number
   }
@@ -235,7 +236,7 @@ void buttonsManager() {
   if (downButtonLastState == LOW && downButtonState == HIGH) {
     // Decrement program number with wrap-around
     if (programNumber > 1) {
-      programNumber--; // Skip 0 as it's empty ???
+      programNumber--; 
     } else {
       programNumber = totalPrograms; // Wrap around to last program
     }
