@@ -235,10 +235,10 @@ void buttonsManager() {
   // Detect down button (D4 pin 7) release (rising edge)
   if (downButtonLastState == LOW && downButtonState == HIGH) {
     // Decrement program number with wrap-around
-    if (programNumber > 1) {
+    if (programNumber > 0) {
       programNumber--; 
     } else {
-      programNumber = totalPrograms; // Wrap around to last program
+      programNumber = totalPrograms - 1; // Wrap around to last program
     }
     ledCounter(); // Update LEDs to show new program number
   }
