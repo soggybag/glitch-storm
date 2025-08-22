@@ -14,7 +14,7 @@
 
 #include "equations.h"
 
-#define isDebugging   false // Set to true to enable serial output for debugging
+#define isDebugging   true // Set to true to enable serial output for debugging
 
 #define ledPin        13 // On-board LED
 #define speakerPin    11 // PWM pin for audio output
