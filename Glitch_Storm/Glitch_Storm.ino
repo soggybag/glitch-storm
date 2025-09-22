@@ -18,7 +18,7 @@
 
 #define ledPin        13 // On-board LED
 #define speakerPin    11 // PWM pin for audio output
-#define upButtonPin   3  // 2  // Pin for the "up" button
+#define upButtonPin   2  // 2  // Pin for the "up" button
 #define downButtonPin 4  // Pin for the "down" button
 
 // Pins for the 4 LEDs showing the current program number in binary
