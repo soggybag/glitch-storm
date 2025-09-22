@@ -18,7 +18,7 @@
 
 #define ledPin        13 // On-board LED
 #define speakerPin    11 // PWM pin for audio output
-#define upButtonPin   2  // Pin for the "up" button
+#define upButtonPin   3  // 2  // Pin for the "up" button
 #define downButtonPin 4  // Pin for the "down" button
 
 // Pins for the 4 LEDs showing the current program number in binary
@@ -38,7 +38,7 @@ byte clocksOut = 0;       // number of clock outputs
 
 static unsigned long time_now = 0; // For debugging
 
-int SAMPLE_RATE = 16384; // Initial sample rate
+uint32_t SAMPLE_RATE = 16384; // Initial sample rate
 
 
 ///////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ void potsManager() {
   c = scaleParam(analogC, equations[programNumber].cMin, equations[programNumber].cMax);
 
   // Sample rate uses a unit 16, can't use scaleParam here! 
-  SAMPLE_RATE = map(analogRead(A3), 0, 1023, 256, 32768);
+  SAMPLE_RATE = map(analogRead(A3), 0, 1023, 256, 32000);
  
   OCR1A = F_CPU / SAMPLE_RATE; // Update Timer1 compare register
 }
@@ -192,6 +192,9 @@ void printValues() {
   Serial.print(b);
   Serial.print("  c: ");
   Serial.println(c);
+
+  Serial.print(" Rate: ");
+  Serial.println(SAMPLE_RATE, DEC);
 }
 
 ///////////////////////////////////////////////////////////////
